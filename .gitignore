@@ -34,6 +34,9 @@ koat-examples
 !.gitattributes
 .DS_Store
 
+#hidden folders
+.vscode/
+
 # build stuff
 cmake-build-debug
 build
