@@ -19,11 +19,9 @@ if(STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")  
     set(BUILD_SHARED_LIBS OFF)
     add_link_options(-ldl -static) 
-    set(EXECUTABLE loat-static)
 else()
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
   message(STATUS "Configuring non-static build")
-  set(EXECUTABLE loat)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -39,16 +37,6 @@ git_local_changes(DIRTY)
 # This embeds the git SHA and versioning information in the build.
 # ------------------------------------------------------------------------------
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
-
-# ------------------------------------------------------------------------------
-# Create the executable target.
-# ------------------------------------------------------------------------------
-add_executable(${EXECUTABLE} "")
-
-# ------------------------------------------------------------------------------
-# Add the 'src' directory, which contains source files.
-# ------------------------------------------------------------------------------
-add_subdirectory(src)
 
 # ------------------------------------------------------------------------------
 # Specify include directories required by the executable.

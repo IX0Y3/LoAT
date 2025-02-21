@@ -9,14 +9,4 @@ add_subdirectory(trl)
 add_subdirectory(adclsat)
 add_subdirectory(bmc)
 
-target_sources(${EXECUTABLE}
-    PRIVATE
-        main.cpp
-        main.hpp
-        version.cpp
-        version.hpp
-        trputil.cpp
-        trputil.hpp
-)
-
-target_include_directories(${EXECUTABLE} PRIVATE ".")
+include(${CMAKE_SOURCE_DIR}/cmake/IntegrateSubfolderFiles.cmake)

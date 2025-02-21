@@ -1,0 +1,21 @@
+file(GLOB CPP_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+file(GLOB HPP_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
+file(GLOB H_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
+
+
+set(LOCAL_FILES ${CPP_FILES} ${HPP_FILES} ${H_FILES})
+
+if(BUILD_EXECUTABLE)
+    target_sources(${EXECUTABLE} PRIVATE ${LOCAL_FILES})
+    target_include_directories(${EXECUTABLE} PRIVATE ".")
+endif()
+
+if(BUILD_SHARED_LIBRARY)
+    target_sources(${LIBRARY_NAME} PRIVATE ${LOCAL_FILES})
+    target_include_directories(${LIBRARY_NAME} PRIVATE ".")
+endif()
+
+if(BUILD_STATIC_LIBRARY)
+    target_sources(${STATIC_LIBRARY_NAME} PRIVATE ${LOCAL_FILES})
+    target_include_directories(${STATIC_LIBRARY_NAME} PRIVATE ".")
+endif()

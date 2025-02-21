@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../abmc/abmc.hpp"
+#include "abmc.hpp"
 
 class ABMC_API
 {

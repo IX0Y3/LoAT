@@ -48,6 +48,7 @@ option(SANITIZE "sanitize" OFF)
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 set(CMAKE_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
 
+
 # ------------------------------------------------------------------------------
 # Include the external dependencies configuration file.
 # This ensures that all required libraries are found before linking.
@@ -58,6 +59,22 @@ include(cmake/Dependencies.cmake)
 # Add link options for multi-threading support.
 # ------------------------------------------------------------------------------
 add_link_options(-pthread)
+
+# ------------------------------------------------------------------------------
+# Define library names
+# ------------------------------------------------------------------------------
+set(LIBRARY_NAME LoAT_API)
+set(STATIC_LIBRARY_NAME LoAT_API_Static)
+
+
+# ------------------------------------------------------------------------------
+# Set the name of potential executable
+# ------------------------------------------------------------------------------
+if(${STATIC})
+    set(EXECUTABLE loat-static)
+else()
+  set(EXECUTABLE loat)
+endif()
 
 # ------------------------------------------------------------------------------
 # Enable sanitizers if the SANITIZE option is ON.
@@ -84,7 +101,7 @@ endif()
 # -pedantic: Ensures compliance with the standard.
 # -Wno-unused-parameter: Suppresses warnings about unused function parameters.
 # ------------------------------------------------------------------------------
-add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter) # for GCC: -fconcepts-diagnostics-depth=100
+add_compile_options(-Wall -Wextra -pedantic -Wno-unused-parameter)
 
 # ------------------------------------------------------------------------------
 # Set compiler flags for different build types (Debug, Release, etc.).
@@ -96,30 +113,38 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
 # ------------------------------------------------------------------------------
 # Print build configurations for debugging purposes.
 # ------------------------------------------------------------------------------
-message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
-message(STATUS "Compiler flags:" ${CMAKE_CXX_COMPILE_FLAGS})
-message(STATUS "Compiler cxx debug flags:" ${CMAKE_CXX_FLAGS_DEBUG})
-message(STATUS "Compiler cxx release flags:" ${CMAKE_CXX_FLAGS_RELEASE})
-message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
-message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
-message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
+# message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
+# message(STATUS "Compiler flags:" ${CMAKE_CXX_COMPILE_FLAGS})
+# message(STATUS "Compiler cxx debug flags:" ${CMAKE_CXX_FLAGS_DEBUG})
+# message(STATUS "Compiler cxx release flags:" ${CMAKE_CXX_FLAGS_RELEASE})
+# message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+# message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
+# message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
-file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
-file(GLOB_RECURSE HEADER_FILES ${CMAKE_SOURCE_DIR}/src/*.hpp)
+# ------------------------------------------------------------------------------
+# Create the targets executable / library / static library .
+# ------------------------------------------------------------------------------
+if(BUILD_EXECUTABLE)
+    add_executable(${EXECUTABLE} "")
+endif()
 
-# 🔍 API-spezifische Quellen extrahieren
-file(GLOB_RECURSE API_SRC_FILES ${CMAKE_SOURCE_DIR}/src/api/*.cpp)
-file(GLOB_RECURSE API_HEADER_FILES ${CMAKE_SOURCE_DIR}/src/api/*.cpp)
+if(BUILD_SHARED_LIBRARY)
+    add_library(${LIBRARY_NAME} STATIC "")
+endif()
 
-# 🔍 Alle anderen Quellen für die Executable
-set(EXECUTABLE_SRC_FILES ${SRC_FILES})
-list(REMOVE_ITEM EXECUTABLE_SRC_FILES ${API_SRC_FILES})
+if(BUILD_STATIC_LIBRARY)
+    add_library(${STATIC_LIBRARY_NAME} STATIC "")
+endif()
 
+# ------------------------------------------------------------------------------
+# Call the CMakeLists.txt of the /src directory
+# ------------------------------------------------------------------------------
+add_subdirectory(src)
 
 # ------------------------------------------------------------------------------
 # Include executable setup if we are building an executable.
 # ------------------------------------------------------------------------------
-include(cmake/ExecutableSetup.cmake)
+include(cmake/ConfigureExecutable.cmake)
 
 # ------------------------------------------------------------------------------
 # Library setup (only if shared or static libraries are built)
@@ -127,33 +152,33 @@ include(cmake/ExecutableSetup.cmake)
 if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
 
     # ------------------------------------------------------------------------------
-    # Define library names
-    # ------------------------------------------------------------------------------
-    set(LIBRARY_NAME LoAT_API)
-    set(STATIC_LIBRARY_NAME LoAT_API_Static)
-
-    # ------------------------------------------------------------------------------
     # Define the API directory where the public headers are located
     # ------------------------------------------------------------------------------
     set(API_DIR ${CMAKE_SOURCE_DIR}/src/api)
 
     # ------------------------------------------------------------------------------
-    # Automatically find all source and header files
-    # ------------------------------------------------------------------------------
-    file(GLOB_RECURSE SOURCES ${API_DIR}/*.cpp)
-    file(GLOB_RECURSE HEADERS ${API_DIR}/*.hpp)
-
-    message(STATUS "SOURCES: ${SOURCES}") 
-    message(STATUS "HEADERS: ${SOURCES}") 
-
-    # ------------------------------------------------------------------------------
     # Create shared library (if enabled)
     # ------------------------------------------------------------------------------
     if(BUILD_SHARED_LIBRARY)
-        add_library(${LIBRARY_NAME} SHARED ${SOURCES})
         target_include_directories(${LIBRARY_NAME} PUBLIC
             $<BUILD_INTERFACE:${API_DIR}>
             $<INSTALL_INTERFACE:include>
+        )
+        target_include_directories(${LIBRARY_NAME} PRIVATE
+            ${sexpresso_INCLUDE_DIRS}
+            ${loat_util_INCLUDE_DIRS}
+            ${loat_container_INCLUDE_DIRS}
+            ${loat_expr_INCLUDE_DIRS}
+            ${loat_fmplex_INCLUDE_DIRS}
+            ${loat_preprocessing_INCLUDE_DIRS}
+            ${loat_smt_INCLUDE_DIRS}
+            ${loat_recurrence_INCLUDE_DIRS}
+            ${loat_acceleration_INCLUDE_DIRS}
+            ${loat_trp_INCLUDE_DIRS}
+            ${loat_itsproblem_INCLUDE_DIRS}
+            ${loat_chcproblem_INCLUDE_DIRS}
+            ${loat_safetyproblem_INCLUDE_DIRS}
+            ${loat_transformations_INCLUDE_DIRS}
         )
     endif()
 
@@ -161,10 +186,25 @@ if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
     # Create static library (if enabled)
     # ------------------------------------------------------------------------------
     if(BUILD_STATIC_LIBRARY)
-        add_library(${STATIC_LIBRARY_NAME} STATIC ${SOURCES})
         target_include_directories(${STATIC_LIBRARY_NAME} PUBLIC
             $<BUILD_INTERFACE:${API_DIR}>
             $<INSTALL_INTERFACE:include>
+        )
+        target_include_directories(${STATIC_LIBRARY_NAME} PRIVATE
+            ${sexpresso_INCLUDE_DIRS}
+            ${loat_util_INCLUDE_DIRS}
+            ${loat_container_INCLUDE_DIRS}
+            ${loat_expr_INCLUDE_DIRS}
+            ${loat_fmplex_INCLUDE_DIRS}
+            ${loat_preprocessing_INCLUDE_DIRS}
+            ${loat_smt_INCLUDE_DIRS}
+            ${loat_recurrence_INCLUDE_DIRS}
+            ${loat_acceleration_INCLUDE_DIRS}
+            ${loat_trp_INCLUDE_DIRS}
+            ${loat_itsproblem_INCLUDE_DIRS}
+            ${loat_chcproblem_INCLUDE_DIRS}
+            ${loat_safetyproblem_INCLUDE_DIRS}
+            ${loat_transformations_INCLUDE_DIRS}
         )
     endif()
 
@@ -232,4 +272,4 @@ if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
     )
 
-endif() # End of library construction
+endif()
