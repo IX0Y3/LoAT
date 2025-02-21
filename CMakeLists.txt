@@ -26,14 +26,20 @@ set(CMAKE_CXX_STANDARD 20)
 # ------------------------------------------------------------------------------
 # Define build options
 # ------------------------------------------------------------------------------
-# STATIC: Whether to build a static binary (default ON).
+# BUILD_SHARED_LIBS: Build shared lib (default ON)
+# BUILD_STATIC_LIBS: Build static lib (default ON)
+# BUILD_EXECUTABLE: Build the executable (default ON)
+# STATIC: Whether to build a static binary - if we build an executable (default ON).
 # SANITIZE: Whether to enable sanitizers for debugging (default OFF).
 # ------------------------------------------------------------------------------
+option(BUILD_SHARED_LIBRARY "Build shared libraries" ON)
+option(BUILD_STATIC_LIBRARY "Build static libraries" ON)
+option(BUILD_EXECUTABLE "Build the executable" OFF)
 option(STATIC "static" ON)
 option(SANITIZE "sanitize" OFF)
 
 # ------------------------------------------------------------------------------
-# Set library search paths
+# Set library search paths (for the executable)
 # ------------------------------------------------------------------------------
 # CMake will look for static libraries (.a) by default instead of shared (.so).
 # Additionally, the system's LD_LIBRARY_PATH environment variable is used
@@ -43,30 +49,15 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 set(CMAKE_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
 
 # ------------------------------------------------------------------------------
-# Add link options for multi-threading support.
-# The "-pthread" flag ensures proper linking against the POSIX threading library.
+# Include the external dependencies configuration file.
+# This ensures that all required libraries are found before linking.
 # ------------------------------------------------------------------------------
-add_link_options(-pthread)
+include(cmake/Dependencies.cmake)
 
 # ------------------------------------------------------------------------------
-# Configure build type based on the STATIC option.
-# If STATIC is ON, a static build is configured with static linking enabled.
-# Otherwise, a shared build is configured with shared objects.
+# Add link options for multi-threading support.
 # ------------------------------------------------------------------------------
-if(${STATIC})
-    message(STATUS "Configuring static build")
-    # Prefer static libraries
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")  
-    set(BUILD_SHARED_LIBS OFF)
-    # Link dynamically-loaded libraries statically
-    add_link_options(-ldl -static) 
-    set(EXECUTABLE loat-static)
-else()
-  # Prefer shared but allow static
-  set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
-  message(STATUS "Configuring non-static build")
-  set(EXECUTABLE loat)
-endif()
+add_link_options(-pthread)
 
 # ------------------------------------------------------------------------------
 # Enable sanitizers if the SANITIZE option is ON.
@@ -113,116 +104,132 @@ message(STATUS "Compiler cxx relwithdebinfo flags:" ${CMAKE_CXX_FLAGS_RELWITHDEB
 message(STATUS "Compiler cxx min size flags:" ${CMAKE_CXX_FLAGS_MINSIZEREL})
 message(STATUS "Compiler cxx flags:" ${CMAKE_CXX_FLAGS})
 
-# ------------------------------------------------------------------------------
-# Find required external libraries.
-# ANTLR4 (parser generator runtime) and FAUDES (automata library).
-# ------------------------------------------------------------------------------
-find_library(ANTLR4 antlr4-runtime)
-message(STATUS "antlr4: ${ANTLR4}")
-find_library(FAUDES faudes)
-message(STATUS "faudes: ${FAUDES}")
+file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE HEADER_FILES ${CMAKE_SOURCE_DIR}/src/*.hpp)
 
-# ------------------------------------------------------------------------------
-# Include Git revision tracking to embed version info into the binary.
-# ------------------------------------------------------------------------------
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
-include(GetGitRevisionDescription)
-get_git_head_revision(GIT_REFSPEC SHA)
-git_local_changes(DIRTY)
+# 🔍 API-spezifische Quellen extrahieren
+file(GLOB_RECURSE API_SRC_FILES ${CMAKE_SOURCE_DIR}/src/api/*.cpp)
+file(GLOB_RECURSE API_HEADER_FILES ${CMAKE_SOURCE_DIR}/src/api/*.cpp)
+
+# 🔍 Alle anderen Quellen für die Executable
+set(EXECUTABLE_SRC_FILES ${SRC_FILES})
+list(REMOVE_ITEM EXECUTABLE_SRC_FILES ${API_SRC_FILES})
 
 
 # ------------------------------------------------------------------------------
-# Generate a version file from a template (src/version.cpp.in).
-# This embeds the git SHA and versioning information in the build.
+# Include executable setup if we are building an executable.
 # ------------------------------------------------------------------------------
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" @ONLY)
+include(cmake/ExecutableSetup.cmake)
 
 # ------------------------------------------------------------------------------
-# Create the executable target.
+# Library setup (only if shared or static libraries are built)
 # ------------------------------------------------------------------------------
-add_executable(${EXECUTABLE} "")
+if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
 
-# ------------------------------------------------------------------------------
-# Add the 'src' directory, which contains source files.
-# ------------------------------------------------------------------------------
-add_subdirectory(src)
+    # ------------------------------------------------------------------------------
+    # Define library names
+    # ------------------------------------------------------------------------------
+    set(LIBRARY_NAME LoAT_API)
+    set(STATIC_LIBRARY_NAME LoAT_API_Static)
 
-# ------------------------------------------------------------------------------
-# Specify include directories required by the executable.
-# ------------------------------------------------------------------------------
-target_include_directories(${EXECUTABLE} PRIVATE
-  ${sexpresso_INCLUDE_DIRS}
-  ${loat_util_INCLUDE_DIRS}
-  ${loat_container_INCLUDE_DIRS}
-  ${loat_expr_INCLUDE_DIRS}
-  ${loat_fmplex_INCLUDE_DIRS}
-  ${loat_preprocessing_INCLUDE_DIRS}
-  ${loat_smt_INCLUDE_DIRS}
-  ${loat_recurrence_INCLUDE_DIRS}
-  ${loat_acceleration_INCLUDE_DIRS}
-  ${loat_trp_INCLUDE_DIRS}
-  ${loat_itsproblem_INCLUDE_DIRS}
-  ${loat_chcproblem_INCLUDE_DIRS}
-  ${loat_safetyproblem_INCLUDE_DIRS}
-  ${loat_transformations_INCLUDE_DIRS}
-)
+    # ------------------------------------------------------------------------------
+    # Define the API directory where the public headers are located
+    # ------------------------------------------------------------------------------
+    set(API_DIR ${CMAKE_SOURCE_DIR}/src/api)
 
+    # ------------------------------------------------------------------------------
+    # Automatically find all source and header files
+    # ------------------------------------------------------------------------------
+    file(GLOB_RECURSE SOURCES ${API_DIR}/*.cpp)
+    file(GLOB_RECURSE HEADERS ${API_DIR}/*.hpp)
 
-# ------------------------------------------------------------------------------
-# Find additional external solver libraries.
-# These provide support for SMT solving, symbolic computation, and arithmetic.
-# ------------------------------------------------------------------------------
-message(STATUS "Searching libraries")
-find_library(Z3 z3)
-message(STATUS "z3: ${Z3}")
-find_library(YICES yices)
-message(STATUS "yices: ${YICES}")
-find_library(POLY poly)
-message(STATUS "poly: ${POLY}")
-find_library(POLYXX polyxx)
-message(STATUS "polyxx: ${POLYXX}")
-find_library(CUDD cudd)
-message(STATUS "cudd: ${CUDD}")
-find_library(CVC5 cvc5)
-message(STATUS "cvc5: ${CVC5}")
-find_library(CADICAL cadical)
-message(STATUS "cadical: ${CADICAL}")
-find_library(SWINE swine-z3)
-message(STATUS "swine: ${SWINE}")
-find_library(CLN cln)
-message(STATUS "cln: ${CLN}")
-find_library(GMP gmp)
-message(STATUS "gmp: ${GMP}")
+    message(STATUS "SOURCES: ${SOURCES}") 
+    message(STATUS "HEADERS: ${SOURCES}") 
 
-# ------------------------------------------------------------------------------
-# Link all found libraries to the executable.
-# $<TARGET_OBJECTS:*> is used to link object libraries.
-# ------------------------------------------------------------------------------
-target_link_libraries(${EXECUTABLE}
-  $<TARGET_OBJECTS:sexpresso>
-  $<TARGET_OBJECTS:loat_util>
-  $<TARGET_OBJECTS:loat_expr>
-  $<TARGET_OBJECTS:loat_fmplex>
-  $<TARGET_OBJECTS:loat_preprocessing>
-  $<TARGET_OBJECTS:loat_smt>
-  $<TARGET_OBJECTS:loat_recurrence>
-  $<TARGET_OBJECTS:loat_acceleration>
-  $<TARGET_OBJECTS:loat_trp>
-  $<TARGET_OBJECTS:loat_itsproblem>
-  $<TARGET_OBJECTS:loat_chcproblem>
-  $<TARGET_OBJECTS:loat_safetyproblem>
-  $<TARGET_OBJECTS:loat_transformations>
-  ${ANTLR4}
-  ${FAUDES}
-  ${SWINE}
-  ${Z3}
-  ${CVC5}
-  ${CADICAL}
-  ${YICES}
-  ${POLYXX}
-  ${POLY}
-  ${CUDD}
-  ${CLN}
-  ${GMP}
-  ${LINKER_OPTIONS}
-)
+    # ------------------------------------------------------------------------------
+    # Create shared library (if enabled)
+    # ------------------------------------------------------------------------------
+    if(BUILD_SHARED_LIBRARY)
+        add_library(${LIBRARY_NAME} SHARED ${SOURCES})
+        target_include_directories(${LIBRARY_NAME} PUBLIC
+            $<BUILD_INTERFACE:${API_DIR}>
+            $<INSTALL_INTERFACE:include>
+        )
+    endif()
+
+    # ------------------------------------------------------------------------------
+    # Create static library (if enabled)
+    # ------------------------------------------------------------------------------
+    if(BUILD_STATIC_LIBRARY)
+        add_library(${STATIC_LIBRARY_NAME} STATIC ${SOURCES})
+        target_include_directories(${STATIC_LIBRARY_NAME} PUBLIC
+            $<BUILD_INTERFACE:${API_DIR}>
+            $<INSTALL_INTERFACE:include>
+        )
+    endif()
+
+    # ------------------------------------------------------------------------------
+    # Installation rules (only if at least one library is built)
+    # ------------------------------------------------------------------------------
+    include(GNUInstallDirs)
+
+    install(TARGETS ${LIBRARY_NAME} ${STATIC_LIBRARY_NAME}
+        EXPORT ${LIBRARY_NAME}Targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+
+    # ------------------------------------------------------------------------------
+    # Export the library for `find_package()`
+    # ------------------------------------------------------------------------------
+    install(EXPORT ${LIBRARY_NAME}Targets
+        FILE ${LIBRARY_NAME}Targets.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
+    )
+
+    # ------------------------------------------------------------------------------
+    # Install header files
+    # ------------------------------------------------------------------------------
+    install(DIRECTORY ${API_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.hpp"
+    )
+
+    # ------------------------------------------------------------------------------
+    # Generate package configuration files for CMake
+    # ------------------------------------------------------------------------------
+    # This section generates CMake package configuration files, allowing
+    # other projects to find and use this library via find_package().
+    include(CMakePackageConfigHelpers)
+
+    # # ------------------------------------------------------------------------------
+    # # Generate a version file for compatibility checking
+    # # ------------------------------------------------------------------------------
+    # # This file ensures that when a project requests LoAT,
+    # # it gets a version that matches the major version it was built for.
+    # write_basic_package_version_file(
+    #     "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}ConfigVersion.cmake"
+    #     VERSION ${PROJECT_VERSION}
+    #     COMPATIBILITY SameMajorVersion
+    # )
+
+    # ------------------------------------------------------------------------------
+    # Generate the main package configuration file
+    # ------------------------------------------------------------------------------
+    # This generates `LoATConfig.cmake`, which helps CMake-based projects
+    # automatically locate the LoAT library when they use `find_package(LoAT)`.
+    configure_package_config_file(
+        "${CMAKE_SOURCE_DIR}/cmake/${LIBRARY_NAME}Config.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
+    )
+
+    # ------------------------------------------------------------------------------
+    # Install generated CMake configuration files
+    # ------------------------------------------------------------------------------
+    # Install the generated config files for package discovery.
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
+    )
+
+endif() # End of library construction
