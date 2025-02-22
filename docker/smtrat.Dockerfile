@@ -1,5 +1,4 @@
-ARG PLATFORM=linux/arm64
-FROM --platform=${PLATFORM} voidlinux/voidlinux-musl:latest AS base
+FROM voidlinux/voidlinux-musl:latest AS base
 
 ENV CFLAGS=-march=x86-64 -O2=-fPIC
 ENV CXXFLAGS=$CFLAGS
