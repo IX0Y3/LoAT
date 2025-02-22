@@ -66,6 +66,11 @@ add_link_options(-pthread)
 set(LIBRARY_NAME LoAT_API)
 set(STATIC_LIBRARY_NAME LoAT_API_Static)
 
+# ------------------------------------------------------------------------------
+# Define the install directory inside the build folder
+# ------------------------------------------------------------------------------
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install CACHE PATH "Install path prefix" FORCE)
+
 
 # ------------------------------------------------------------------------------
 # Set the name of potential executable
@@ -215,8 +220,8 @@ if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
 
     install(TARGETS ${LIBRARY_NAME} ${STATIC_LIBRARY_NAME}
         EXPORT ${LIBRARY_NAME}Targets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
     )
 
     # ------------------------------------------------------------------------------
@@ -224,13 +229,13 @@ if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
     # ------------------------------------------------------------------------------
     install(EXPORT ${LIBRARY_NAME}Targets
         FILE ${LIBRARY_NAME}Targets.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/${LIBRARY_NAME}
     )
 
     # ------------------------------------------------------------------------------
     # Install header files
     # ------------------------------------------------------------------------------
-    install(DIRECTORY ${API_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    install(DIRECTORY ${API_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include
         FILES_MATCHING PATTERN "*.hpp"
     )
 
@@ -260,16 +265,15 @@ if(BUILD_SHARED_LIBRARY OR BUILD_STATIC_LIBRARY)
     configure_package_config_file(
         "${CMAKE_SOURCE_DIR}/cmake/${LIBRARY_NAME}Config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
+        INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/${LIBRARY_NAME}
     )
 
     # ------------------------------------------------------------------------------
     # Install generated CMake configuration files
     # ------------------------------------------------------------------------------
-    # Install the generated config files for package discovery.
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}Config.cmake"
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBRARY_NAME}
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/${LIBRARY_NAME}
     )
 
 endif()
