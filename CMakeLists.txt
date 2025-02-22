@@ -134,7 +134,7 @@ if(BUILD_EXECUTABLE)
 endif()
 
 if(BUILD_SHARED_LIBRARY)
-    add_library(${LIBRARY_NAME} STATIC "")
+    add_library(${LIBRARY_NAME} SHARED "")
 endif()
 
 if(BUILD_STATIC_LIBRARY)
