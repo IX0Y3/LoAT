@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../adclsat/adclsat.hpp"
+#include "adclsat.hpp"
 
 class ADCLSAT_API
 {

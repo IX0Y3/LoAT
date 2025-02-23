@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../adcl/adcl.hpp"
+#include "adcl.hpp"
 
 class ADCL_API
 {
