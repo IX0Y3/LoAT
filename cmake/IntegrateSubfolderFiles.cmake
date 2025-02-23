@@ -10,12 +10,10 @@ if(BUILD_EXECUTABLE)
     target_include_directories(${EXECUTABLE} PRIVATE ".")
 endif()
 
-if(BUILD_SHARED_LIBRARY)
-    target_sources(${LIBRARY_NAME} PRIVATE ${LOCAL_FILES})
-    target_include_directories(${LIBRARY_NAME} PRIVATE ".")
-endif()
-
 if(BUILD_STATIC_LIBRARY)
     target_sources(${STATIC_LIBRARY_NAME} PRIVATE ${LOCAL_FILES})
-    target_include_directories(${STATIC_LIBRARY_NAME} PRIVATE ".")
+    target_include_directories(${STATIC_LIBRARY_NAME} PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+    )
 endif()
