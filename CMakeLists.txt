@@ -35,7 +35,7 @@ option(STATIC "static" ON)
 option(SANITIZE "sanitize" OFF)
 
 set(BUILD_STATIC_LIBRARY ON)
-set(BUILD_EXECUTABLE ON)
+set(BUILD_EXECUTABLE OFF)
 
 # ------------------------------------------------------------------------------
 # Set library search paths (for the executable)
@@ -147,6 +147,65 @@ if(BUILD_STATIC_LIBRARY)
         $<INSTALL_INTERFACE:include>
     )
 
+    set(OBJECT_LIBRARIES 
+        sexpresso
+        loat_util
+        loat_expr
+        loat_fmplex
+        loat_preprocessing
+        loat_smt
+        loat_recurrence
+        loat_acceleration
+        loat_trp
+        loat_itsproblem
+        loat_chcproblem
+        loat_safetyproblem
+        loat_transformations
+    )
+
+    foreach(LIB ${OBJECT_LIBRARIES})
+        target_sources(${STATIC_LIBRARY_NAME} PRIVATE $<TARGET_OBJECTS:${LIB}>)
+    endforeach()
+
+    set(INCLUDE_DIRECTORIES
+        ${sexpresso_INCLUDE_DIRS}
+        ${loat_util_INCLUDE_DIRS}
+        ${loat_container_INCLUDE_DIRS}
+        ${loat_expr_INCLUDE_DIRS}
+        ${loat_fmplex_INCLUDE_DIRS}
+        ${loat_preprocessing_INCLUDE_DIRS}
+        ${loat_smt_INCLUDE_DIRS}
+        ${loat_recurrence_INCLUDE_DIRS}
+        ${loat_acceleration_INCLUDE_DIRS}
+        ${loat_trp_INCLUDE_DIRS}
+        ${loat_itsproblem_INCLUDE_DIRS}
+        ${loat_chcproblem_INCLUDE_DIRS}
+        ${loat_safetyproblem_INCLUDE_DIRS}
+        ${loat_transformations_INCLUDE_DIRS}
+    )
+
+    target_include_directories(${STATIC_LIBRARY_NAME} PUBLIC
+        $<BUILD_INTERFACE:${INCLUDE_DIRECTORIES}>
+        $<INSTALL_INTERFACE:include>
+    )
+
+    # Finde Boost und stelle sicher, dass die benötigten Komponenten verfügbar sind
+    find_library(BOOST boost)
+
+    # Füge Boost zu den Include-Direktiven hinzu
+    target_include_directories(${STATIC_LIBRARY_NAME} PUBLIC
+        $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>
+        $<INSTALL_INTERFACE:include/boost>
+    )
+
+    target_link_libraries(${STATIC_LIBRARY_NAME} BOOST)
+
+    file(GLOB BOOST_HEADERS "${Boost_INCLUDE_DIRS}/*.hpp" "${Boost_INCLUDE_DIRS}/*.h")
+
+    install(FILES ${BOOST_HEADERS} DESTINATION include/boost)
+
+    # target_link_libraries(${STATIC_LIBRARY_NAME} ${EXTERNAL_LIBS})
+
     # ------------------------------------------------------------------------------
     # Installation rules for the static library.
     # ------------------------------------------------------------------------------
@@ -175,11 +234,15 @@ if(BUILD_STATIC_LIBRARY)
         "${CMAKE_SOURCE_DIR}/cmake/${STATIC_LIBRARY_NAME}Config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/${STATIC_LIBRARY_NAME}Config.cmake"
         INSTALL_DESTINATION lib/cmake/${STATIC_LIBRARY_NAME}
-        PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
     )
 
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/${STATIC_LIBRARY_NAME}Config.cmake"
         DESTINATION lib/cmake/${STATIC_LIBRARY_NAME}
     )
+
+    set_target_properties(${STATIC_LIBRARY_NAME} PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES $<INSTALL_INTERFACE:include>
+    )
+
 endif()
